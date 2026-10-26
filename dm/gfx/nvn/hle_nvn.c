@@ -727,6 +727,15 @@ static int keys_hash(const NVNshaderData *sd, int mapped, uint8_t out[8]) {
     } else if (DM_GAME_SHADER_KEY_SKIP_LEN && DM_GAME_SHADER_KEY_SKIP_OFF + DM_GAME_SHADER_KEY_SKIP_LEN <= nctl) {
         uint8_t ctl[0x880]; memcpy(ctl, sd->control, nctl); memset(ctl + DM_GAME_SHADER_KEY_SKIP_OFF, 0, DM_GAME_SHADER_KEY_SKIP_LEN);
         CC_SHA256_Update(&hc, ctl, nctl);
+    } else if (DM_GAME_SHADER_CONTROL_NORMALIZE && nctl > 0x778) {
+        // Profile key shader_control_normalize (the LOTR shader build): +0x778..+0x780 and +0x7d0..+0x7e0, runtime-patched non-semantic fields, hashed as zeros
+        static const uint8_t zero[16];
+        uint32_t a = 0x778, b = nctl < 0x780 ? nctl : 0x780, c = nctl < 0x7d0 ? nctl : 0x7d0, d = nctl < 0x7e0 ? nctl : 0x7e0;
+        CC_SHA256_Update(&hc, sd->control, a);
+        if (b > a) CC_SHA256_Update(&hc, zero, b - a);
+        if (c > b) CC_SHA256_Update(&hc, (const uint8_t *)sd->control + b, c - b);
+        if (d > c) CC_SHA256_Update(&hc, zero, d - c);
+        if (nctl > d) CC_SHA256_Update(&hc, (const uint8_t *)sd->control + d, nctl - d);
     } else CC_SHA256_Update(&hc, sd->control, nctl);
     if (code) CC_SHA256_Update(&hc, (const void *)(uintptr_t)sd->data, ncode);
     CC_SHA256_Final(md, &hc); memcpy(out, md, 8);
