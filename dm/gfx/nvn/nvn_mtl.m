@@ -1613,6 +1613,54 @@ static void alias_take_over(const alias_key *nk) {
     }
     if (n) { g_ser_gen++; g_alias_taken += n; }
 }
+static void obj_drop(id o) { if (alias_has(o)) defer_obj_unref(o); else defer_obj_release(o); }   // caller holds g_smu
+
+enum { NPROG_GHOST = 512 };
+
+static nvn_hmap g_prog_ghost = {.klen = 8};
+static uint64_t g_prog_ghost_ring[NPROG_GHOST];
+static unsigned g_prog_ghost_next;
+
+static __unsafe_unretained id prog_ghost_get(uint64_t k) {
+    pthread_mutex_lock(&g_smu);
+
+    __unsafe_unretained id o = hm_get_id(&g_by_serial, &k);
+    if (!o && g_prog_ghost.n)
+        o = hm_get_id(&g_prog_ghost, &k);
+
+    pthread_mutex_unlock(&g_smu);
+    return o;
+}
+
+static void prog_ghost_put(uint64_t k) {
+    if (!k) return;
+
+    pthread_mutex_lock(&g_smu);
+
+    id o = hm_get_id(&g_by_serial, &k);
+    if (o) {
+        hm_del_id(&g_by_serial, &k);
+
+        uint64_t *slot =
+            &g_prog_ghost_ring[g_prog_ghost_next++ % NPROG_GHOST];
+
+        if (*slot) {
+            id old = hm_get_id(&g_prog_ghost, slot);
+
+            if (old) {
+                obj_drop(old);
+                hm_del_id(&g_prog_ghost, slot);
+            }
+        }
+
+        *slot = k;
+        hm_put_id(&g_prog_ghost, &k, o);
+        g_ser_gen++;
+    }
+
+    pthread_mutex_unlock(&g_smu);
+}
+
 static __unsafe_unretained id serial_get(uint64_t k) { pthread_mutex_lock(&g_smu); __unsafe_unretained id o = hm_get_id(&g_by_serial, &k); pthread_mutex_unlock(&g_smu); return o; }
 static void serial_put(uint64_t k, id o) { pthread_mutex_lock(&g_smu); id old = hm_get_id(&g_by_serial, &k); if (old) { if (alias_has(old)) defer_obj_unref(old); else defer_obj_release(old); } hm_put_id(&g_by_serial, &k, o); g_ser_gen++; pthread_mutex_unlock(&g_smu); }
 static void serial_del(uint64_t k) { pthread_mutex_lock(&g_smu); id old = hm_get_id(&g_by_serial, &k); if (old) { if (alias_has(old)) defer_obj_unref(old); else defer_obj_release(old); hm_del_id(&g_by_serial, &k); g_ser_gen++; } pthread_mutex_unlock(&g_smu); }   // nothing to drop: the texture ID caches stay valid
@@ -1625,7 +1673,6 @@ enum { NGHOST = 512 };
 static nvn_hmap g_tex_live = {.klen = 8};   // serial → (void *)1, under g_smu
 static nvn_hmap g_ghost = {.klen = 8}; static uint64_t g_ghost_ring[NGHOST]; static unsigned g_ghost_next; static uint64_t g_ghost_puts;
 void mtl_tex_init(const tex_t *t) { if (!t->serial) return; pthread_mutex_lock(&g_smu); nvn_hm_put(&g_tex_live, &t->serial, (void *)1); pthread_mutex_unlock(&g_smu); }
-static void obj_drop(id o) { if (alias_has(o)) defer_obj_unref(o); else defer_obj_release(o); }   // caller holds g_smu
 static __unsafe_unretained id tex_get(uint64_t k) {
     pthread_mutex_lock(&g_smu); __unsafe_unretained id o = hm_get_id(&g_by_serial, &k); if (!o && g_ghost.n) o = hm_get_id(&g_ghost, &k); pthread_mutex_unlock(&g_smu); return o;
 }
@@ -3593,7 +3640,7 @@ static __unsafe_unretained NvProg *prog_get(const prog_t *cp) {   // Called only
     static const prog_t *lp; static uint64_t lser, lgen; static NvProg *lpr;   // Last result: same object, same serial and unchanged serial table means it is used directly
     uint64_t gen = g_ser_gen;
     if (p == lp && p->serial == lser && gen == lgen && lpr) return lpr;
-    __unsafe_unretained NvProg *have = p->serial ? serial_get(p->serial) : nil;
+    __unsafe_unretained NvProg *have = p->serial ? prog_ghost_get(p->serial) : nil;
     if (have) { lp = p; lser = p->serial; lgen = gen; lpr = have; return have; }
     shmap_load();
     NvProg *o = [NvProg new];
@@ -3623,7 +3670,7 @@ static __unsafe_unretained NvProg *prog_get(const prog_t *cp) {   // Called only
     if (p->serial) serial_put(p->serial, o);
     return o;
 }
-void mtl_prog_release(prog_t *p) { if (p->serial) serial_del(p->serial); }
+void mtl_prog_release(prog_t *p) { if (p->serial) prog_ghost_put(p->serial); }
 
 // ---------- Descriptor pool: texture ID / sampler ID → object ----------
 // At registration the whole texture object is snapshotted (NVN semantics: the descriptor has been written into the pool); view: the MTLTexture for that ID (a view or the base texture, held via CFBridgingRetain) and the serial-table / guest-write generations at the time it was obtained

@@ -574,6 +574,24 @@ static prog_keys_t *pk_get(const void *p, int make) {
     pthread_mutex_unlock(&g_pk_mu);
     return k;
 }
+static void prog_keys_snapshot(const void *p, uint8_t key[6][8], uint8_t *ok) {
+    prog_keys_t *k = pk_get(p, 0);
+    if (k) {
+        memcpy(key, k->key, sizeof k->key);
+        *ok = k->ok;
+    } else {
+        memset(key, 0, 6 * 8);
+        *ok = 0;
+    }
+}
+
+void prog_keys_restore(const void *p, const uint8_t key[6][8], uint8_t ok) {
+    if (!p) return;
+    prog_keys_t *k = pk_get(p, 1);
+    memcpy(k->key, key, sizeof k->key);
+    k->ok = ok;
+}
+
 static void pk_drop(const void *p) {
     pthread_mutex_lock(&g_pk_mu);
     prog_keys_t *k = g_pk ? (prog_keys_t *)CFDictionaryGetValue(g_pk, p) : NULL;
@@ -598,8 +616,12 @@ static int keys_hash(const NVNshaderData *sd, int mapped, uint8_t out[8]) {
 }
 int prog_key(const prog_t *p, unsigned st, uint8_t key[8]) {
     if (st >= p->nstage) return 0;
-    prog_keys_t *k = pk_get(p, 1);
-    if (!(k->ok >> st & 1)) { keys_hash(&p->sd[st], 0, k->key[st]); k->ok |= (uint8_t)(1u << st); }
+
+    // The control section is only guaranteed valid during ProgramSetShaders.
+    // Never attempt to reconstruct a missing key later from prog_t::sd.
+    prog_keys_t *k = pk_get(p, 0);
+    if (!k || !(k->ok >> st & 1)) return 0;
+
     memcpy(key, k->key[st], 8);
     return 1;
 }
@@ -612,9 +634,21 @@ NVN(nvnProgramSetShaders, NVNboolean, NVNprogram *p, int n, const NVNshaderData 
     prog_keys_t *k = pk_get(p, 1);
     k->ok = 0;
     for (int i = 0; i < n; i++) {
-        if (keys_hash(&sd[i], 1, k->key[i])) k->ok |= (uint8_t)(1u << i);
-        // DM_NVN_SHDUMP (debugging): keep a copy of the control section so the replay layer can save shaders missing from the map (never freed)
-        if (dump && sd[i].control) { void *c = malloc(0x880); memcpy(c, sd[i].control, 0x880); o->sd[i].control = c; }
+        int hashed = keys_hash(&sd[i], 1, k->key[i]);
+        if (hashed) k->ok |= (uint8_t)(1u << i);
+
+        // The caller may free the control section immediately after this
+        // function. Retain it whenever hashing must be deferred, and also
+        // when runtime shader dumping requires it during replay.
+        if ((dump || !hashed) && sd[i].control) {
+            void *c = malloc(0x880);
+            if (!c) {
+                LOG("[RED] ProgramSetShaders cannot retain shader control section");
+                return 0;
+            }
+            memcpy(c, sd[i].control, 0x880);
+            o->sd[i].control = c;
+        }
     }
     OLOG("ProgramSetShaders %p n=%d data0=%#llx", (void *)p, n, n ? (unsigned long long)sd[0].data : 0ull);
     return 1;
@@ -918,7 +952,25 @@ NVN(nvnCommandBufferSetViewports, void, NVNcommandBuffer *c, int first, int n, c
 NVN(nvnCommandBufferSetScissor, void, NVNcommandBuffer *c, int x, int y, int w, int h) { *REC(c, OP_SCISSOR, p_scissor) = (p_scissor){x, y, w, h}; }
 NVN(nvnCommandBufferSetDepthRange, void, NVNcommandBuffer *c, float n, float f) { *REC(c, OP_DEPTH_RANGE, p_depth_range) = (p_depth_range){n, f}; }
 NVN(nvnCommandBufferBindProgram, void, NVNcommandBuffer *c, const NVNprogram *p, int stages) {
-    *REC(c, OP_BIND_PROGRAM, p_bind_program) = (p_bind_program){(const prog_t *)p, stages};
+    p_bind_program *r = REC(c, OP_BIND_PROGRAM, p_bind_program);
+    r->prog = NULL;
+    r->stages = stages;
+
+    if (p) {
+        prog_t *snap = malloc(sizeof *snap);
+        if (!snap) {
+            LOG("[RED] BindProgram: cannot allocate program snapshot");
+            return;
+        }
+
+        *snap = *(const prog_t *)p;
+
+        uint8_t key[6][8], ok;
+        prog_keys_snapshot(p, key, &ok);
+        prog_keys_restore(snap, key, ok);
+
+        r->prog = snap;
+    }
 }
 static void bind_state(NVNcommandBuffer *c, int kind, const void *st, size_t n) { p_bind_state *r = REC(c, OP_BIND_STATE, p_bind_state); r->kind = kind; memcpy(r->bytes, st, n); }
 NVN(nvnCommandBufferBindBlendState, void, NVNcommandBuffer *c, const NVNblendState *st) { bind_state(c, 0, st, sizeof(blend_st)); }
