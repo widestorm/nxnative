@@ -609,7 +609,23 @@ static int keys_hash(const NVNshaderData *sd, int mapped, uint8_t out[8]) {
     uint32_t nctl = 0x880, own; memcpy(&own, (const uint8_t *)sd->control + 0x20, 4);
     if (own >= 0x760 && own < 0x880) nctl = own;
     uint8_t md[CC_SHA256_DIGEST_LENGTH]; CC_SHA256_CTX hc; CC_SHA256_Init(&hc);
-    CC_SHA256_Update(&hc, sd->control, nctl);
+    if (DM_GAME_SHADER_CONTROL_NORMALIZE && nctl > 0x778) {
+        // Ignore runtime-patched, non-semantic identifiers when this game's
+        // shader profile uses normalized control-section identity.
+        static const uint8_t zero[16];
+        uint32_t a = nctl < 0x778 ? nctl : 0x778;
+        uint32_t b = nctl < 0x780 ? nctl : 0x780;
+        uint32_t c = nctl < 0x7d0 ? nctl : 0x7d0;
+        uint32_t d = nctl < 0x7e0 ? nctl : 0x7e0;
+
+        CC_SHA256_Update(&hc, sd->control, a);
+        if (b > a) CC_SHA256_Update(&hc, zero, b - a);
+        if (c > b) CC_SHA256_Update(&hc, (const uint8_t *)sd->control + b, c - b);
+        if (d > c) CC_SHA256_Update(&hc, zero, d - c);
+        if (nctl > d) CC_SHA256_Update(&hc, (const uint8_t *)sd->control + d, nctl - d);
+    } else {
+        CC_SHA256_Update(&hc, sd->control, nctl);
+    }
     if (code) CC_SHA256_Update(&hc, (const void *)(uintptr_t)sd->data, ncode);
     CC_SHA256_Final(md, &hc); memcpy(out, md, 8);
     return 1;
