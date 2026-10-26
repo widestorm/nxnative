@@ -1,46 +1,39 @@
-# Pokémon Violet 1.0.0, Game Freak's Trinity engine, SDK 13.3.5.
-# Pokémon Scarlet's twin (0100A3D008C5C000): the same sdk and subsdk0 builds, only main is its own.
-# Made from Scarlet's profile with Violet's title, name, IPA name, build row and shader tables.
-# Only 1.0.0 is registered; use -p v0 when the NSP folder also has updates.
-
+# Game profile of Pokémon Violet (Switch, base game v0 + update 4.0.0 = v786432)
+# Format: see dm/games/README.md
+# Game Freak's Trinity engine on SDK 13.3.13, NVN, Wwise. Every file lives in the Trinity packs of arc/data.trpfs (FlatBuffers, Oodle), as in Pokémon Legends: Z-A; started from the provisional
+# profile scripts/build_ipa_from_nsp.py wrote from its survey (dm/games/profile_guess.py)
 # ---- Identity ----
 title_id	01008F6008C5E000
 program_id	01008F6008C5E000
-
 # ---- App ----
 name	Pokémon Violet
 ipa	PokemonViolet.ipa
 app_category	public.app-category.games
-# The 3D layout exposes the right stick for the camera and the D-pad.
+# the camera is on the right stick
 pad_layout	full
-
 # ---- Versions ----
-build	v0	1.0.0	main=959ed651bf1ae0cccafe8c3f4c64bfd2	sdk=3644a6760469451cabc99f00c540acc2
-package	v0
-shader_versions	v0
-
-# The game calls nvnDeviceSetDepthMode(near=0); prepare the same main0_z bases
-# offline so the first run can use them instead of repeating the full prebuild.
-depth_mode	zero
-
+build	v786432	4.0.0	main=709bfd66115298640155fcc4979dba15	sdk=bb560bdfa85b4a97786ae2c3b7995df6
+package	v786432
+shader_versions	v786432
 # ---- Files ----
-# subsdk0 is NintendoSDK_movie; the host supplies its imported entry points.
+# every module main imports from; subsdk0 (NintendoSDK_movie) is not loaded: main takes nothing from it the host does not supply
 modules	main sdk
 romfs_marker	arc/data.trpfs
 zip_store	.bk2:.bnk:.pck:.trpfd:.trpfs:.metallib
-
 # ---- Memory ----
-# The host's StandardAllocator cap, the 62 MB SDK node area and the SDK-wide
-# region alignment fit in the alias region. See Scarlet's README.md for the startup probes.
+# nninitStartup (main+0x2b7da90) initializes its StandardAllocator with virtual address memory over 12 GB of address space (StandardAllocator::Initialize(nullptr, 0x300000000, false),
+# main+0x167d554), which the Switch's 64 GB alias region holds. Three cuts for 4.0.0 (patches.py and dm/tools/sdk_patches.py) make it fit the 5 GB block, as Pokémon Legends: Z-A's do:
+# the allocator gets 4 GB, the SDK's node area of 1 GB becomes 62 MB and regions of 1 GB and more are aligned to 32 MB instead of 1 GB
 mem_reserve	0x140000000
 mem_alias	0x118000000
 mem_stack	0x10000000
 app_pool	0xCD500000
+# the NPDM declares 16 MB of system resource
 sys_resource	0x1000000
-# Startup allocates and frees everything allocatable. The SDK releases those
-# cached pages only after a map fails at the real application-pool limit.
+# nninitStartup allocates and frees all it can (pool − used memory) and the SDK keeps those pages mapped until a map fails: the pool is enforced as on Horizon, so it gives them back (hle_svc.c)
 mem_map_limit	on
-
 # ---- Shader split ----
-shader_groups	#arc/system_resource=system #arc/ik_effect=effect #arc/ik_pokemon=pokemon #arc/ui=layout /arc/=arc
+shader_groups	/audio/=audio /arc/=arc /demo/=demo /system/=system /event/=event
 shader_note	Pokémon Violet shaders
+# the NVN depth mode the game sets (nvnDeviceSetDepthMode near = 0): the pipeline archive made offline holds the main0_z vertex entries (dm/gfx/tools/pso_offline.py)
+depth_mode	zero
