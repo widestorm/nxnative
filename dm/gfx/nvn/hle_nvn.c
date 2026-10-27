@@ -757,7 +757,10 @@ NVN(nvnProgramSetShaders, NVNboolean, NVNprogram *p, int n, const NVNshaderData 
     if (n < 0 || n > 6) { LOG("[RED] ProgramSetShaders stage count %d", n); return 0; }
     mtl_prog_release(o); o->nstage = n; memcpy(o->sd, sd, n * sizeof *sd); o->serial = nvn_new_serial();
     // The keys are computed here (see prog_key in nvn_obj.h): the control section is only guaranteed valid during this call; the code area lives in a memory pool and stays valid while the program is in use
-    static int dump = -1; if (dump < 0) dump = getenv("DM_NVN_SHDUMP") != NULL;
+    // DM_NVN_SHDUMP=<directory>: save every runtime shader as <key>.ctl / <key>.code while the control section and code area are both valid (same key as shader_map.tsv)
+    static const char *dump_dir; static int dump_init;
+    if (!dump_init) { dump_dir = getenv("DM_NVN_SHDUMP"); dump_init = 1; }
+    int dump = dump_dir != NULL;
     static const char *trace; static int trace_init;
     if (!trace_init) { trace = getenv("DM_NVN_PROGTRACE"); trace_init = 1; }
     prog_keys_t *k = pk_get(p, 1);
@@ -771,6 +774,26 @@ NVN(nvnProgramSetShaders, NVNboolean, NVNprogram *p, int n, const NVNshaderData 
             if (strstr(trace, key)) {
                 LOG("[nvn] ProgramSetShaders key=%s control=%p code=%#llx", key, sd[i].control, (unsigned long long)sd[i].data);
                 dm_backtrace((uint64_t)__builtin_frame_address(0));
+            }
+        }
+
+        if (dump_dir && hashed && sd[i].control && sd[i].data) {
+            uint32_t ncode = 0;
+            memcpy(&ncode, (const uint8_t *)sd[i].control + 0x704, 4);
+            if (ncode && ncode < (1u << 24)) {
+                char key[17], path[1024];
+                for (int q = 0; q < 8; q++) snprintf(key + q * 2, 3, "%02x", k->key[i][q]);
+                snprintf(path, sizeof path, "%s/%s.ctl", dump_dir, key);
+                if (access(path, F_OK) != 0) {
+                    FILE *f = fopen(path, "wb");
+                    int ctl_ok = f && fwrite(sd[i].control, 1, 0x880, f) == 0x880;
+                    if (f) fclose(f);
+                    snprintf(path, sizeof path, "%s/%s.code", dump_dir, key);
+                    f = fopen(path, "wb");
+                    int code_ok = f && fwrite((const void *)(uintptr_t)sd[i].data, 1, ncode, f) == ncode;
+                    if (f) fclose(f);
+                    if (ctl_ok && code_ok) LOG("nvn: captured runtime shader %s (%#x bytes)", key, ncode);
+                }
             }
         }
 
