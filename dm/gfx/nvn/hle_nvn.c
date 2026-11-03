@@ -26,6 +26,7 @@
 #include <TargetConditionals.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <errno.h>
 #if TARGET_OS_OSX
 #define DM_MEM_CAP_DEFAULT_GB 24
@@ -759,7 +760,7 @@ NVN(nvnProgramSetShaders, NVNboolean, NVNprogram *p, int n, const NVNshaderData 
     // The keys are computed here (see prog_key in nvn_obj.h): the control section is only guaranteed valid during this call; the code area lives in a memory pool and stays valid while the program is in use
     // DM_NVN_SHDUMP=<directory>: save every runtime shader as <key>.ctl / <key>.code while the control section and code area are both valid (same key as shader_map.tsv)
     static const char *dump_dir; static int dump_init;
-    if (!dump_init) { dump_dir = getenv("DM_NVN_SHDUMP"); dump_init = 1; }
+    if (!dump_init) { dump_dir = getenv("DM_NVN_SHDUMP"); dump_init = 1; if (dump_dir && *dump_dir) mkdir(dump_dir, 0777); }
     int dump = dump_dir != NULL;
     static const char *trace; static int trace_init;
     if (!trace_init) { trace = getenv("DM_NVN_PROGTRACE"); trace_init = 1; }
@@ -778,15 +779,15 @@ NVN(nvnProgramSetShaders, NVNboolean, NVNprogram *p, int n, const NVNshaderData 
         }
 
         if (dump_dir && hashed && sd[i].control && sd[i].data) {
-            uint32_t ncode = 0;
-            memcpy(&ncode, (const uint8_t *)sd[i].control + 0x704, 4);
+            uint32_t ncode = 0, nctl = 0;
+            nvn_ctl_lens(sd[i].control, &nctl, &ncode);   // the same bytes the key hashes, as nvn_mtl.m's dump of shaders missing from the map writes
             if (ncode && ncode < (1u << 24)) {
                 char key[17], path[1024];
                 for (int q = 0; q < 8; q++) snprintf(key + q * 2, 3, "%02x", k->key[i][q]);
                 snprintf(path, sizeof path, "%s/%s.ctl", dump_dir, key);
                 if (access(path, F_OK) != 0) {
                     FILE *f = fopen(path, "wb");
-                    int ctl_ok = f && fwrite(sd[i].control, 1, 0x880, f) == 0x880;
+                    int ctl_ok = f && fwrite(sd[i].control, 1, nctl, f) == nctl;
                     if (f) fclose(f);
                     snprintf(path, sizeof path, "%s/%s.code", dump_dir, key);
                     f = fopen(path, "wb");
