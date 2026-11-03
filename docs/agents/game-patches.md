@@ -44,6 +44,8 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 | `build` → `sdk` | rows the rules would add the alignment cuts to (2d369d99, 12f16103, 311deab1) | address space | blocked: the games that reach them (Pokémon Brilliant Diamond, Monster Hunter Rise, 13 Sentinels: Aegis Rim; Brain Memory Training Academy; Ace Attorney Investigations Collection) have no Mac build: run one per build with the alignment cuts | checked: the rules resolved on each build's sdk, 2026-10-29 and 2026-10-30 | 12 | [sdk_patches.py](../../dm/tools/sdk_patches.py) | the rules give these builds the same node area cut and the three alignment cuts more; each row keeps the alignment out |
 | `build` → `sdk` | rows of builds not on the game drive (56ec2474, 9c73fb73, e01950c5) | address space | blocked: no copy on the drive to compare | judgement | 3 | [sdk_patches.py](../../dm/tools/sdk_patches.py) | likely what the rules give (each names one of their implementations) |
 | `build` → `game` | Unity BucketAllocator ALLOC_BUCKET: 255 blocks of 4 MB → 63 | address space | blocked: no extracted main of either Subnautica on the game drive to fingerprint | checked: the bucket allocator of five Unity 2021 and later mains (not Subnautica's), 2026-10-29 | 2 | [Subnautica](../../dm/games/0100429011144000/README.md); [Subnautica: Below Zero](../../dm/games/010014C011146000/README.md) | Unity 2019's constructor call takes the block count as a constant; Unity 2021 and later read the bucket sizes from boot.config with a default of one block (Cult of the Lamb, Monster Train 2, Blasphemous 2, BALL x PIT, Donkey Kong Country Returns HD; checked 2026-10-29) and need no cut, so no Unity rule. A function-matched rule could carry it over the game's updates |
+| `build` → `host` | StandardAllocator::Initialize's address space 12 GB → 4 GB (4.0.0 main) | address space | blocked: not yet run on 4.0.0 without the cut: kept as PR #269 tested it until a Mac run without it reaches the same frames | judgement | 1 | [Pokémon Violet](../../dm/games/01008F6008C5E000/README.md) | the host's StandardAllocator gate lowers such a request in every build (docs/reference/memory.md, StandardAllocators over 12 to 62 GB of address space); Pokémon Legends: Z-A's same cut was removed once the gate played its route |
+| `build` → `sdk` | Pokémon Violet 4.0.0 row (bb560bdf): node area 1 GB → 62 MB and regions of 1 GB and more aligned to 32 MB | address space | blocked: not yet compared with the rules on the 4.0.0 sdk, nor run without the row | judgement | 1 | [sdk_patches.py](../../dm/tools/sdk_patches.py) | the SDK-wide rules likely cover this SDK 13.3.13 build (they replaced the rows of Scarlet 1.0.0 and other SDK 13.3 builds); the row keeps the cuts PR #269 was tested with |
 | `build` → `sdk` | VammManager node area and alignment, SDK 4.4.0 (9de92bad) | address space | blocked: one game ships it | judgement | 1 | [sdk_patches.py](../../dm/tools/sdk_patches.py) | an older implementation no rule covers (its large regions aligned to 32 MB, not the rules' 2 MB); a rule once a second game ships it |
 | `build` → `engine` | Criterion's 60 fps mode, frame ticks and game step at fixed addresses | frame rate | blocked: one game on that engine here | judgement | 1 | [Need For Speed™ Hot Pursuit Remastered](../../dm/games/010029B0118E8000/README.md) | the studio's engine, which its other games ship |
 | `build` → `engine` | Frostbite's frame regulator at a fixed pointer | frame rate | blocked: one Frostbite game here | judgement | 1 | [EA SPORTS FC 27](../../dm/games/0100C49025D3E000/README.md) | engine code other Frostbite games ship (the simulation's own rate is already set by name) |
@@ -81,6 +83,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 | [Paper Mario: The Thousand-Year Door](#paper-mario-the-thousand-year-door) | 1 | 0 | 1 | 0 | 0 | `build` → `game` |
 | [Pokémon Brilliant Diamond](#pokémon-brilliant-diamond) | 0 | 0 | 0 | 0 | 1 | `build` → `engine` |
 | [Pokémon Legends: Arceus](#pokémon-legends-arceus) | 0 | 0 | 0 | 1 | 0 | `game` |
+| [Pokémon Violet](#pokémon-violet) | 1 | 0 | 0 | 0 | 0 | `build` → `host` |
 | [Subnautica](#subnautica) | 1 | 0 | 0 | 0 | 0 | `build` → `game` |
 | [Subnautica: Below Zero](#subnautica-below-zero) | 1 | 0 | 0 | 0 | 0 | `build` → `game` |
 | [Super Mario 3D All-Stars: Super Mario Sunshine](#super-mario-3d-all-stars-super-mario-sunshine) | 2 | 0 | 0 | 0 | 0 | `build` → `game` |
@@ -456,6 +459,15 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 
 - **function-matched** (`main` of builds without CUTS): capture demo: the empty result when the weak reference at +0x88 is unset or dead: 1 function, 5 cuts
 
+### Pokémon Violet
+
+[Pokémon Violet](../../dm/games/01008F6008C5E000/README.md), `01008F6008C5E000`, [patches.py](../../dm/games/01008F6008C5E000/patches.py).
+
+- **`build` → `host`**, address space, blocked: not yet run on 4.0.0 without the cut: kept as PR #269 tested it until a Mac run without it reaches the same frames, judgement: StandardAllocator::Initialize's address space 12 GB → 4 GB (4.0.0 main). The host's StandardAllocator gate lowers such a request in every build (docs/reference/memory.md, StandardAllocators over 12 to 62 GB of address space); Pokémon Legends: Z-A's same cut was removed once the gate played its route
+
+- **4.0.0 `main`** `709bfd66…` ([patches.py:7](../../dm/games/01008F6008C5E000/patches.py#L7))
+  - cut `+0x167d54c`: StandardAllocator::Initialize(nullptr, size, false): address space mov x2,#0x300000000 → mov x2,#0x100000000 (12 GB → 4 GB)
+
 ### Subnautica
 
 [Subnautica](../../dm/games/0100429011144000/README.md), `0100429011144000`, [patches.py](../../dm/games/0100429011144000/patches.py).
@@ -628,6 +640,7 @@ Cuts of Nintendo SDK `sdk` builds ([sdk_patches.py](../../dm/tools/sdk_patches.p
 - **`sdk`**, address space, at goal, checked: 20 registered builds rewritten byte-identical with the rules alone, 2026-10-29 and 2026-10-30; the 2 MB alignment on every sdk build on the drive, 2026-10-30: node area 1 GB → 62 MB and regions of 4 MB and more aligned to 2 MB, as SDK 20: the SDK-wide rules. One rule per reviewed implementation; every sdk build without CUTS gets them
 - **`build` → `sdk`**, address space, blocked: the games that reach them (Pokémon Brilliant Diamond, Monster Hunter Rise, 13 Sentinels: Aegis Rim; Brain Memory Training Academy; Ace Attorney Investigations Collection) have no Mac build: run one per build with the alignment cuts, checked: the rules resolved on each build's sdk, 2026-10-29 and 2026-10-30: rows the rules would add the alignment cuts to (2d369d99, 12f16103, 311deab1). The rules give these builds the same node area cut and the three alignment cuts more; each row keeps the alignment out
 - **`build` → `sdk`**, address space, blocked: no copy on the drive to compare, judgement: rows of builds not on the game drive (56ec2474, 9c73fb73, e01950c5). Likely what the rules give (each names one of their implementations)
+- **`build` → `sdk`**, address space, blocked: not yet compared with the rules on the 4.0.0 sdk, nor run without the row, judgement: Pokémon Violet 4.0.0 row (bb560bdf): node area 1 GB → 62 MB and regions of 1 GB and more aligned to 32 MB. The SDK-wide rules likely cover this SDK 13.3.13 build (they replaced the rows of Scarlet 1.0.0 and other SDK 13.3 builds); the row keeps the cuts PR #269 was tested with
 - **`build` → `sdk`**, address space, blocked: one game ships it, judgement: VammManager node area and alignment, SDK 4.4.0 (9de92bad). An older implementation no rule covers (its large regions aligned to 32 MB, not the rules' 2 MB); a rule once a second game ships it
 
 - **sdk** `9de92bad…` ([sdk_patches.py:9](../../dm/tools/sdk_patches.py#L9)): Mario + Rabbids Kingdom Battle 1.9.589692
@@ -649,7 +662,11 @@ Cuts of Nintendo SDK `sdk` builds ([sdk_patches.py](../../dm/tools/sdk_patches.p
 - **sdk** `9c73fb73…` ([sdk_patches.py:50](../../dm/tools/sdk_patches.py#L50)): Patrick's Parabox 1.0.1
   - cut `+0x37c3b0`: AddressRegionManager constructor: node area limit mov w8,#0x3fe00000 → mov w8,#0x3e00000
   - cut `+0x37c44c`: AddressRegionManager constructor: length of the node area registered as an occupied region mov w9,#0x3fe00000 → mov w9,#0x3e00000
-- **sdk** `e01950c5…` ([sdk_patches.py:58](../../dm/tools/sdk_patches.py#L58)): Hollow Knight: Silksong 1.0.30000
+- **sdk** `bb560bdf…` ([sdk_patches.py:60](../../dm/tools/sdk_patches.py#L60)): Pokémon Violet 4.0.0
+  - cut `+0x37c760`: AddressRegionManager constructor: node area limit mov w8,#0x3fe00000 → mov w8,#0x3e00000
+  - cut `+0x37c7fc`: AddressRegionManager constructor: length of the node area registered as an occupied region mov w9,#0x3fe00000 → mov w9,#0x3e00000
+  - cut `+0x37c95c`: AllocateAddressRegion: alignment of regions of 1 GB and more mov w10,#0x40000000 → mov w10,#0x2000000 (32 MB, as from 32 MB up)
+- **sdk** `e01950c5…` ([sdk_patches.py:69](../../dm/tools/sdk_patches.py#L69)): Hollow Knight: Silksong 1.0.30000
   - cut `+0x145bfc`: AddressRegionManager constructor: node area limit mov w8,#0x3fe00000 → mov w8,#0x3e00000
   - cut `+0x145c68`: AddressRegionManager constructor: length of the node area registered as an occupied region mov w9,#0x3fe00000 → mov w9,#0x3e00000
 
