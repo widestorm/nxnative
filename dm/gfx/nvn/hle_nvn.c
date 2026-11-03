@@ -745,10 +745,15 @@ static int keys_hash(const NVNshaderData *sd, int mapped, uint8_t out[8]) {
 int prog_key(const prog_t *p, unsigned st, uint8_t key[8]) {
     if (st >= p->nstage) return 0;
 
-    // The control section is only guaranteed valid during ProgramSetShaders.
-    // Never attempt to reconstruct a missing key later from prog_t::sd.
+    // The game's control section is only guaranteed valid during ProgramSetShaders. A stage whose code area was not mapped then (Mario) keeps the host's copy of its
+    // control section (ProgramSetShaders retains it when hashing is deferred), so its key is computed from that copy the first time it is asked for, as upstream does
     prog_keys_t *k = pk_get(p, 0);
-    if (!k || !(k->ok >> st & 1)) return 0;
+    if (!k || !(k->ok >> st & 1)) {
+        if (!p->sd[st].control) return 0;
+        k = pk_get(p, 1);
+        if (!keys_hash(&p->sd[st], 0, k->key[st])) return 0;
+        k->ok |= (uint8_t)(1u << st);
+    }
 
     memcpy(key, k->key[st], 8);
     return 1;
