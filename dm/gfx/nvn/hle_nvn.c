@@ -1942,7 +1942,20 @@ static void present_cfg(const win_t *o) {
     LOG("[nvn] present tick %d Hz, interval mode %s (%s; present interval set by the game %d; %s)", g_hz, g_display_mode ? "display (one frame per tick, a cut)" : "game (original semantics)",
         m ? "DM_PRESENT_INTERVAL" : "game profile present_interval", o->interval, scr > 0 ? "window" : "no window");
 }
-static int present_itv(const win_t *o) { int c = fps_present_cap(), k = atomic_load(&g_fs_k); return c ? (k && fstep_on() ? k : fstep_hz() / c) : g_display_mode ? 1 : o->interval > 0 ? o->interval : 1; }   // vsyncs per frame that presentation follows
+// DM_PRESENT_INTERVAL_MIN=<n> (2: a 30 fps lock at 60 Hz): presentation and the acquire's pacing follow at least n vsyncs, whatever interval the game sets. Only for a game that steps its world by the
+// time it measures (Ocarina of Time: sead / gsys delta time), which then runs at the same speed at a steady lower rate; a game that counts frames would run slower. No frame step or engine limit needed
+static int present_itv_min(void) {
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("DM_PRESENT_INTERVAL_MIN"); v = e ? atoi(e) : 0; if (v < 0 || v > 4) v = 0; if (v > 1) LOG("[nvn] DM_PRESENT_INTERVAL_MIN=%d: at least %d vsyncs a frame (%d fps at 60 Hz), whatever interval the game sets", v, v, 60 / v); }
+    return v;
+}
+static int present_itv(const win_t *o) {   // vsyncs per frame that presentation follows
+    int c = fps_present_cap(), k = atomic_load(&g_fs_k);
+    if (c) return k && fstep_on() ? k : fstep_hz() / c;
+    if (g_display_mode) return 1;
+    int itv = o->interval > 0 ? o->interval : 1, m = present_itv_min();
+    return itv < m ? m : itv;
+}
 // The acquire's wait for the display link: the present interval's vsyncs (60 Hz units), or with present_interval display above 60 Hz (DM_PRESENT_HZ=120 on a 120 Hz link,
 // DM_PRESENT_LINK=2) one tick of the present rate, as many link ticks as that takes. Before, a 120 Hz link waited two ticks per frame there, and display mode never went past 60 fps
 static int link_wait(const win_t *o, uint64_t timeout_ns) {
