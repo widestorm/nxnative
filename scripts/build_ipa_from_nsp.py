@@ -3152,6 +3152,8 @@ def main(args=None):
         seen = seen_keys(g, sh, seen_logs(work, app)) if seen_shaders else None
         ios = build_shaders(py, repo, sh, xlate, env, logs, g, pkey, mac, seen, None if mac else ios_wants_pulling(g, ios_gpus((args.gpu or PSO_GPUS).strip(), g), prepare_xcode, env))
     icon = next((d / 'icon.jpg' for d in (game, base) if (d / 'icon.jpg').exists()), None)   # the game icon nx_extract saved from the control data (English, icon.jpg); the packed version's first, then the base game's
+    if not icon and (own := next((nsp_dir / n for n in ('icon.png', 'icon.jpg') if (nsp_dir / n).is_file()), None)):   # no icon in the control data (a NUP or a dump without it):
+        icon = own; say(f'game icon: {own.name} beside the game files (the control data has none)')   # the player's own image beside the game files, any size sips reads (PNG keeps its transparency)
     motion = MOTION if args.motion is None else args.motion
     jit = uses_jit(game / 'ExeFS')
     if jit and not mac and not mac_pack: capture_jit(py, repo, game, patched, work, env, logs, g)   # the iPhone runs no code made at run time: it serves the plugin's output from an image
