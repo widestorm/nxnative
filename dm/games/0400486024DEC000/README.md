@@ -45,6 +45,8 @@ Measured on an M6 Mac with 16 GB, headless, on one walk with camera turns (`walk
 - With a window, the first start on a new chain runs the pipeline prebuild first: 33,190 shader pairs, 691 s on this Mac. A run with no window skips it.
 - The opening movie runs at the movie's own 24 fps pace during the story section and cannot be skipped: about 8 minutes on a new file.
 
+- Frame rate 30 (`fps_target`, the launcher's Frame rate): the game steps its world by a fixed 1/60 s a frame from its time object, so below 60 fps it ran slow (at 35 fps about 58 % speed; held at 30, half speed). The frame step stub (`patches.py`, main+0x6e6cc4) multiplies the step the frame update hands the time object's setter by the vsyncs the host holds each frame. Checked on an M4 (10-core GPU, 16 GB) in handheld mode with `DM_UPSCALER=metalfx`: 33.3 ms frames, 3 of 300 late, Link and the world at their real speed. That Mac does not hold 60 outdoors (GPU about 33 ms at 854x480; the foliage's indirect mesh draws 1.4-9 ms of it).
+
 ## Memory
 
 - Current: on the walk, run from an external drive with a 3.5 GB pipeline archive: resident 10.9-11.4 GB, wired about 9.4 GB, on a 16 GB Mac. `vmmap` and `footprint`: 6.4 GB of guest memory and 3.8 GB of Metal textures and targets, 1 GB of IOAccelerator memory. [Reading the archive into memory](../../../docs/reference/memory.md#a-pipeline-archive-on-an-external-drive-is-read-into-memory) used to add 3.5 GB (footprint 15.0, peak 16.7). `mem_map_limit on`: a map past the application pool fails as on Horizon, and the SDK's allocator then gives back the pages it keeps. Other apps' memory adds to the swap: other games running beside it can push the Mac over.

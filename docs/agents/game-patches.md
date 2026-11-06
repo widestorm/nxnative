@@ -92,7 +92,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 | [Taiko Risshiden V DX](#taiko-risshiden-v-dx) | 1 | 0 | 0 | 2 | 0 | `game` |
 | [The Legend of Zelda: Breath of the Wild](#the-legend-of-zelda-breath-of-the-wild) | 7 | 0 | 43 | 0 | 0 | `build` → `game` ×2 |
 | [The Legend of Zelda: Link's Awakening](#the-legend-of-zelda-links-awakening) | 1 | 0 | 0 | 0 | 0 | `build` → `game` |
-| [The Legend of Zelda: Ocarina of Time](#the-legend-of-zelda-ocarina-of-time) | 0 | 2 | 1 | 0 | 0 | `build`, `build` → `engine` |
+| [The Legend of Zelda: Ocarina of Time](#the-legend-of-zelda-ocarina-of-time) | 0 | 0 | 1 | 0 | 0 | `build` → `engine` |
 | [The Legend of Zelda: Tears of the Kingdom](#the-legend-of-zelda-tears-of-the-kingdom) | 0 | 0 | 9 | 0 | 0 | `build` → `game` |
 | [Xenoblade Chronicles 3](#xenoblade-chronicles-3) | 6 | 0 | 0 | 0 | 0 | `build` → `game` |
 
@@ -607,12 +607,9 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 
 [The Legend of Zelda: Ocarina of Time](../../dm/games/0400486024DEC000/README.md), `0400486024DEC000`, [patches.py](../../dm/games/0400486024DEC000/patches.py).
 
-- **`build`**, frame rate, at goal, judgement: frame clock probes at main+0x508c34 and main+0x508c4c (diagnostic, v131072 main). Read-only gates at fixed offsets of this build, for one measurement; they go once the frame step is understood
 - **`build` → `engine`**, frame rate, blocked: one game of this engine version here, judgement: frame step: the time object's step times the host's vsyncs (v131072 main+0x6e6cc4). Nintendo EPD's engine (Tears of the Kingdom's file layout) may share the time object and its setter with other games
 
-- **v131072 `main`** `e0f3ccfa…` ([patches.py:12](../../dm/games/0400486024DEC000/patches.py#L12))
-  - gate 8475 at `+0x508c34`: probe slot 0: ldr s0,[x1,#4], the step the update copies into its system object (+0xa68)
-  - gate 33605659 at `+0x508c4c`: probe slot 1: ldr s0,[x8,#0x18], the time the update multiplies by 60.0
+- **v131072 `main`** `e0f3ccfa…` ([patches.py:29](../../dm/games/0400486024DEC000/patches.py#L29))
   - frame step `+0x6e6cc4`: frame step from the host in whole vsyncs: the time object's step times the vsyncs the frame is on screen for (state +0x20; 0 = the game's step)
 
 ### The Legend of Zelda: Tears of the Kingdom
