@@ -146,7 +146,7 @@ static void tfb_draw(NvProg *pr, NvShader *vs, id<MTLRenderPipelineState> ps, co
         if (S.ssbo[0][i].size && tfb_hits(S.ssbo[0][i].addr, S.ssbo[0][i].addr + S.ssbo[0][i].size)) dep = 1;
     }
     if (dep) tfb_end_pass();
-    vbuf_prepare(); if (g_blit) { enc_b_end(g_blit); g_blit = nil; }
+    vbuf_prepare(vs ? &vs->rf : NULL, dw, NULL); if (g_blit) { enc_b_end(g_blit); g_blit = nil; }
     if (!g_tfb_en) {
         MTL4RenderPassDescriptor *rd = [MTL4RenderPassDescriptor new]; rd.renderTargetWidth = rd.renderTargetHeight = rd.defaultRasterSampleCount = 1;
         g_tfb_en = enc_r_begin(rd); g_tfb_passes++;
