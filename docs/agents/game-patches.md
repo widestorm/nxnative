@@ -91,6 +91,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 | [Taiko Risshiden V DX](#taiko-risshiden-v-dx) | 1 | 0 | 0 | 2 | 0 | `game` |
 | [The Legend of Zelda: Breath of the Wild](#the-legend-of-zelda-breath-of-the-wild) | 7 | 0 | 43 | 0 | 0 | `build` → `game` ×2 |
 | [The Legend of Zelda: Link's Awakening](#the-legend-of-zelda-links-awakening) | 1 | 0 | 0 | 0 | 0 | `build` → `game` |
+| [The Legend of Zelda: Ocarina of Time](#the-legend-of-zelda-ocarina-of-time) | 0 | 2 | 0 | 0 | 0 | `build` |
 | [The Legend of Zelda: Tears of the Kingdom](#the-legend-of-zelda-tears-of-the-kingdom) | 0 | 0 | 9 | 0 | 0 | `build` → `game` |
 | [Xenoblade Chronicles 3](#xenoblade-chronicles-3) | 6 | 0 | 0 | 0 | 0 | `build` → `game` |
 
@@ -600,6 +601,16 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 
 - **1.1.0 `main`** `909e904a…` ([patches.py:12](../../dm/games/01006BB00C6F0000/patches.py#L12))
   - cut `+0x10cd070`: physics completion task release (calls its own destructor): ldr x8,[x0] → ret (no longer destroyed; the step function rebuilds it in place every step)
+
+### The Legend of Zelda: Ocarina of Time
+
+[The Legend of Zelda: Ocarina of Time](../../dm/games/0400486024DEC000/README.md), `0400486024DEC000`, [patches.py](../../dm/games/0400486024DEC000/patches.py).
+
+- **`build`**, frame rate, at goal, judgement: frame clock probes at main+0x508c34 and main+0x508c4c (diagnostic, v131072 main). Read-only gates at fixed offsets of this build, for one measurement; they go once the frame step is understood
+
+- **v131072 `main`** `e0f3ccfa…` ([patches.py:11](../../dm/games/0400486024DEC000/patches.py#L11))
+  - gate 8475 at `+0x508c34`: probe slot 0: ldr s0,[x1,#4], the step the update copies into its system object (+0xa68)
+  - gate 33605659 at `+0x508c4c`: probe slot 1: ldr s0,[x8,#0x18], the time the update multiplies by 60.0
 
 ### The Legend of Zelda: Tears of the Kingdom
 
