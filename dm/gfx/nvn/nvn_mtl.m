@@ -3343,7 +3343,7 @@ static int tex_cpu_content(const tex_t *t) {
     if (!on || !t->mem || !t->pool || t->has_layout || t->d.samples > 1 || t->d.target == NVN_TEXTURE_TARGET_BUFFER) return 0;
     int unc = !fmt_compressed(t->d.format) && t->d.target != NVN_TEXTURE_TARGET_3D;
     if (unc) {   // not in a pool the GPU writes; not what only the GPU or the decoder fills (a display or video-decode texture, depth or stencil)
-        if (atomic_load_explicit(&t->pool->gpu_written, memory_order_relaxed) || fmt_depth(t->d.format) || (t->d.flags & (NVN_TEXTURE_FLAGS_DISPLAY | NVN_TEXTURE_FLAGS_VIDEO_DECODE))) return 0;
+        if ((!DM_GAME_TEX_STORAGE_GPU_POOL && atomic_load_explicit(&t->pool->gpu_written, memory_order_relaxed)) || fmt_depth(t->d.format) || (t->d.flags & (NVN_TEXTURE_FLAGS_DISPLAY | NVN_TEXTURE_FLAGS_VIDEO_DECODE))) return 0;
     }
     if (t->pool->flags & (NVN_MEMORY_POOL_FLAGS_CPU_NO_ACCESS | NVN_MEMORY_POOL_FLAGS_VIRTUAL)) return 0;   // the CPU cannot write it (tex_init_fill fills it once) / sparse (tex_from_storage)
     // IMAGE only matters for an uncompressed texture: shaders cannot write a block-compressed one. Pokopia gives nearly every texture IMAGE (flags 0x4), its icons BC1 / BC7 in a
@@ -3351,9 +3351,15 @@ static int tex_cpu_content(const tex_t *t) {
     if ((t->d.flags & (NVN_TEXTURE_FLAGS_COMPRESSIBLE | NVN_TEXTURE_FLAGS_LINEAR | NVN_TEXTURE_FLAGS_LINEAR_RENDER_TARGET | NVN_TEXTURE_FLAGS_SPARSE))
         || ((t->d.flags & NVN_TEXTURE_FLAGS_IMAGE) && !fmt_compressed(t->d.format))) return 0;
     if (!mem_any(t->mem, t->L.size)) return 0;
-    if (unc) { uint64_t s = t->serial; pthread_mutex_lock(&g_cpu_tex_mu); nvn_hm_put(&g_cpu_unc, &s, (void *)t->pool); pthread_mutex_unlock(&g_cpu_tex_mu); }
-    static uint64_t n[2]; if (n[unc]++ < 4) MLOG("texture written by the CPU before its first use ser=%llu %ux%ux%u format %#x%s pool flags %#x: uploaded from its storage, re-uploaded when it changes (%llu so far)",
-                                         (unsigned long long)t->serial, t->d.width, t->d.height, t->d.depth, t->d.format, unc ? " (uncompressed, in a pool the GPU has not written)" : "", t->pool->flags, (unsigned long long)n[unc]);
+    // Profile tex_storage_gpu_pool: in any pool, and kept CPU-written at the pool's first GPU write (not in g_cpu_unc). Ocarina of Time's terrain tiles share a CPU_CACHED pool with the
+    // tiles' normal maps it draws, so the pool is GPU-written from the first tile on; its resource defragmentation (Tears of the Kingdom's main+0x5bc988) moves each tile with memcpy and
+    // creates its textures again at the new address. The moved 260x260 R32F height maps held their heights in the storage and were GPU textures of zeros, the floor drawn at height 0 (the
+    // ground missing, the grass standing in the air above it, a little way from where the game was loaded). Taken from the storage, a texture the game later draws into is read back into
+    // it when its pass ends (rt_mirror_add), so the storage keeps what the GPU drew; storage of zeros stays out (mem_any above)
+    int gpool = unc && atomic_load_explicit(&t->pool->gpu_written, memory_order_relaxed);
+    if (unc && !DM_GAME_TEX_STORAGE_GPU_POOL) { uint64_t s = t->serial; pthread_mutex_lock(&g_cpu_tex_mu); nvn_hm_put(&g_cpu_unc, &s, (void *)t->pool); pthread_mutex_unlock(&g_cpu_tex_mu); }
+    static uint64_t n[3]; int k = gpool ? 2 : unc; if (n[k]++ < 4 || (k == 2 && n[k] % 1000 == 0)) MLOG("texture written by the CPU before its first use ser=%llu %ux%ux%u format %#x%s pool flags %#x: uploaded from its storage, re-uploaded when it changes (%llu so far)",
+                                         (unsigned long long)t->serial, t->d.width, t->d.height, t->d.depth, t->d.format, gpool ? " (uncompressed, in a pool the GPU writes: tex_storage_gpu_pool)" : unc ? " (uncompressed, in a pool the GPU has not written)" : "", t->pool->flags, (unsigned long long)n[k]);
     return 1;
 }
 void mtl_pool_gpu_written(const void *pool) {

@@ -13,6 +13,7 @@ A Switch 2 game: update v131072, SDK 22.2.8 (`Ounce`). Nintendo EPD's engine (se
 | `gpu_timestamps segment` | `game.tsv` | the game's dynamic resolution decides from GPU timestamps, and with one time per submission it never lowers its resolution ([why](../../../docs/reference/frame-rate.md#dynamic-resolution-that-never-moves-and-draw-passes-that-wait-for-each-other)) |
 | `draw_barriers game` | `game.tsv` | about 180 full barriers a frame NVN does not ask for: GPU 25 → 18 ms at full resolution |
 | `tex_flush_upload on`, `tex_dirty_upload on` | `game.tsv` | as Tears of the Kingdom: the CPU writes the terrain tiles' height (R32F), blend and hole (RGBA8) maps into textures after creating them. Without the keys those textures stay zero: flat blue holes in the ground around the path with grass floating in them, and grey stone where the console shows dirt |
+| `tex_storage_gpu_pool on` | `game.tsv` | the tiles' resource defragmentation moves them with `memcpy` and creates their textures again over the copy, in the pool the GPU draws the tiles' normal maps into. Without the key the moved R32F height maps were zero on the host (their storage held every height): the ground drawn at height 0, missing a little way from where a save is loaded, with the grass standing in the air ([why](../../../docs/reference/nvn-objects.md#uncompressed-storage-the-cpu-wrote-in-a-pool-the-gpu-has-not-written)). Fix pending a check on the Mac |
 | `shader_groups`, `shader_note` | `game.tsv` | shaders grouped as `/Shader/`, `/Effect/`, `/Lib/`, `/UI/` |
 | `pad_layout full` | `game.tsv` | a 3D field and both sticks |
 
@@ -102,3 +103,4 @@ From an empty save: at about 45 s `A` (title), `A` (New Game), then the movie. F
 - [Image atomics on a 32-bit colour texture](../../../docs/reference/shaders.md#image-atomics-on-a-32-bit-colour-texture)
 - [A host's own store in a fragment shader moves its depth test](../../../docs/reference/frame-rate.md#a-hosts-own-store-in-a-fragment-shader-moves-its-depth-test)
 - [Dead-code removal dropped a coordinate of a multi-output instruction](../../../docs/reference/shaders.md#dead-code-removal-dropped-a-coordinate-of-a-multi-output-instruction)
+- [Uncompressed storage the CPU wrote, in a pool the GPU has not written](../../../docs/reference/nvn-objects.md#uncompressed-storage-the-cpu-wrote-in-a-pool-the-gpu-has-not-written): the moved terrain height maps, in a pool the GPU writes (`tex_storage_gpu_pool`).

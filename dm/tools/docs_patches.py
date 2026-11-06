@@ -106,6 +106,8 @@ SWITCH_BINDING = [
      'why': 'unified memory semantics; off by default because a flushed range could cover an image a shader writes: tracking GPU writes would make it safe for every game'}),
     ('tex_dirty_upload', '', {'what': 'CPU-written textures uploaded without a flush', 'now': 'game', 'goal': 'host', 'purpose': 'rendering',
      'why': 'as tex_flush_upload, for pools the CPU writes without a flush'}),
+    ('tex_storage_gpu_pool', '', {'what': 'uncompressed textures taken from their storage at first use in a pool the GPU writes', 'now': 'game', 'goal': 'host', 'purpose': 'rendering',
+     'why': 'a render target with flags 0 cannot be told from a CPU-filled texture; telling the two apart (a first use as an attachment, or the storage written since the last GPU write over it) would make it safe for every game'}),
     ('tex_dyn_slots', '', {'what': "buffer-texture handles indexed through c2's tables", 'now': 'game', 'goal': 'host', 'purpose': 'shaders',
      'why': "right only where the handle comes from c2's tables: the translator could prove that per shader"}),
     ('feedback_snap', '', {'what': 'draws that sample their own colour attachment read a snapshot', 'now': 'game', 'goal': 'host', 'purpose': 'rendering',

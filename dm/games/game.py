@@ -197,6 +197,8 @@ def header_one(g):
     if tfu not in ('on', 'off'): sys.exit(f'{g.id}: tex_flush_upload must be on or off: {tfu}')
     tdu = g.get('tex_dirty_upload', 'off')   # with tex_flush_upload: a registered texture the CPU writes after init without any flush is uploaded too (dirty pages, hle_nvn.c nvn_ft_written): on / off
     if tdu not in ('on', 'off') or (tdu == 'on' and tfu != 'on'): sys.exit(f'{g.id}: tex_dirty_upload must be on or off, and needs tex_flush_upload on: {tdu}')
+    tsg = g.get('tex_storage_gpu_pool', 'off')   # uncompressed 2D textures taken from their storage at first use in a pool the GPU writes as well, and kept CPU-written (nvn_mtl.m tex_cpu_content): on / off
+    if tsg not in ('on', 'off'): sys.exit(f'{g.id}: tex_storage_gpu_pool must be on or off: {tsg}')
     tds = g.get('tex_dyn_slots', 'off')   # shaders whose texture handle the translator could not trace to one slot: slot indices in c2, the bound slots in the fallback arrays (nvn_mtl.m): on / off
     if tds not in ('on', 'off'): sys.exit(f'{g.id}: tex_dyn_slots must be on or off: {tds}')
     vcr = g.get('vconv_range', 'off')   # vertex attributes converted on the CPU only over the vertices each draw reads (nvn_mtl.m vc_draw_range): on / off
@@ -261,6 +263,7 @@ def header_one(g):
         f'#define DM_GAME_SHADER_CONTROL_NORMALIZE {int(g.get("shader_control_normalize", "off") == "on")}',
          f'#define DM_GAME_RENDER_COND {int(rcd == "on")}',
          f'#define DM_GAME_TEX_DIRTY_UPLOAD {int(tdu == "on")}',
+         f'#define DM_GAME_TEX_STORAGE_GPU_POOL {int(tsg == "on")}',
          f'#define DM_GAME_TEX_DYN_SLOTS {int(tds == "on")}',
          f'#define DM_GAME_GPU_TS_SEGMENT {int(gts == "segment")}',
          f'#define DM_GAME_DRAW_BARRIERS_GAME {int(dbr == "game")}',

@@ -52,3 +52,6 @@ draw_barriers	game
 # As Tears of the Kingdom: the terrain's height, blend and hole maps are written by the CPU into textures after they are created. Without these keys they stay zero: holes in the ground and the wrong materials
 tex_flush_upload	on
 tex_dirty_upload	on
+# The tiles' resource defragmentation moves them with memcpy and creates their textures again at the new address, in a pool the GPU writes (it draws the tiles' normal maps there): the moved
+# height maps were GPU textures of zeros, the ground drawn at height 0 (missing floor, grass in the air) a little way from where a save is loaded. Taken from their storage at first use
+tex_storage_gpu_pool	on
