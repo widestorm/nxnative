@@ -37,8 +37,8 @@ shader_groups	/Shader/=shader /Effect/=effect /Lib/=lib /UI/=layout
 shader_note	Ocarina of Time shaders
 
 # ---- Frame rate ----
-# The game steps its world by a fixed 1/60 s per frame (its time object, hle_fpslock.c), so below 60 fps it runs slow. fps_target makes the launcher offer Frame rate: at 30 the host
-# holds each frame two vsyncs and writes a step of 2.0 sixtieths (1/30 s) into the time object, so the game runs at its real speed; 60 leaves the constructor's values
+# The game steps its world by a fixed 1/60 s per frame (its time object), so below 60 fps it ran slow. The frame step stub (patches.py) multiplies that step by the vsyncs the host
+# holds each frame; fps_target makes the launcher offer Frame rate (30: two vsyncs a frame, at the game's real speed; 60: the game's own step whenever frames fit)
 fps_target	60
 
 # ---- Graphics ----

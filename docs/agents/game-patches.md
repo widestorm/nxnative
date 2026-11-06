@@ -48,9 +48,9 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 | `build` → `sdk` | Pokémon Violet 4.0.0 row (bb560bdf): node area 1 GB → 62 MB and regions of 1 GB and more aligned to 32 MB | address space | blocked: not yet compared with the rules on the 4.0.0 sdk, nor run without the row | judgement | 1 | [sdk_patches.py](../../dm/tools/sdk_patches.py) | the SDK-wide rules likely cover this SDK 13.3.13 build (they replaced the rows of Scarlet 1.0.0 and other SDK 13.3 builds); the row keeps the cuts PR #269 was tested with |
 | `build` → `sdk` | VammManager node area and alignment, SDK 4.4.0 (9de92bad) | address space | blocked: one game ships it | judgement | 1 | [sdk_patches.py](../../dm/tools/sdk_patches.py) | an older implementation no rule covers (its large regions aligned to 32 MB, not the rules' 2 MB); a rule once a second game ships it |
 | `build` → `engine` | Criterion's 60 fps mode, frame ticks and game step at fixed addresses | frame rate | blocked: one game on that engine here | judgement | 1 | [Need For Speed™ Hot Pursuit Remastered](../../dm/games/010029B0118E8000/README.md) | the studio's engine, which its other games ship |
+| `build` → `engine` | frame step: the time object's step times the host's vsyncs (v131072 main+0x6e6cc4) | frame rate | blocked: one game of this engine version here | judgement | 1 | [The Legend of Zelda: Ocarina of Time](../../dm/games/0400486024DEC000/README.md) | Nintendo EPD's engine (Tears of the Kingdom's file layout) may share the time object and its setter with other games |
 | `build` → `engine` | Frostbite's frame regulator at a fixed pointer | frame rate | blocked: one Frostbite game here | judgement | 1 | [EA SPORTS FC 27](../../dm/games/0100C49025D3E000/README.md) | engine code other Frostbite games ship (the simulation's own rate is already set by name) |
 | `build` → `engine` | Next Level Games' frame limiter target at a fixed address | frame rate | blocked: one game on that engine here | judgement | 1 | [Luigi's Mansion 3](../../dm/games/0100DCA0064A6000/README.md) | the studio's engine, which its other games ship |
-| `build` → `engine` | Ocarina of Time's time object (frame step, seconds and rate) at a fixed pointer | frame rate | blocked: one game of this engine version here | judgement | 1 | [The Legend of Zelda: Ocarina of Time](../../dm/games/0400486024DEC000/README.md) | Nintendo EPD's engine (Tears of the Kingdom's file layout) may keep the same time object in other games |
 | `build` → `engine` | RE Engine's frame limit at a fixed pointer | frame rate | blocked: one RE Engine game here | judgement | 1 | [Monster Hunter Rise](../../dm/games/0100B04011742000/README.md) | engine code other RE Engine games ship |
 | `build` → `engine` | ThreadedStreamBuffer load-acquires | race | blocked: no game files of those games on the drive to compare | judgement | 1 | [FINAL FANTASY CRYSTAL CHRONICLES Remastered Edition](../../dm/games/0100CE4010AAC000/README.md) | the race is in Unity 2018.4's ThreadedStreamBuffer, engine code other Unity games of that era ship (Cuphead, AI: THE SOMNIUM FILES, Raging Loop): a function-matched rule per Unity version |
 | `build` → `game` | 60 fps frame step (112 sites) | frame rate | blocked: frame-step stubs have no function-matched form yet | judgement | 1 | [ASTRAL CHAIN](../../dm/games/01007300020FA000/README.md) | the game's own clock and timers (a community 60 fps mod on the host's frame step) |
@@ -92,7 +92,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 | [Taiko Risshiden V DX](#taiko-risshiden-v-dx) | 1 | 0 | 0 | 2 | 0 | `game` |
 | [The Legend of Zelda: Breath of the Wild](#the-legend-of-zelda-breath-of-the-wild) | 7 | 0 | 43 | 0 | 0 | `build` → `game` ×2 |
 | [The Legend of Zelda: Link's Awakening](#the-legend-of-zelda-links-awakening) | 1 | 0 | 0 | 0 | 0 | `build` → `game` |
-| [The Legend of Zelda: Ocarina of Time](#the-legend-of-zelda-ocarina-of-time) | 0 | 2 | 0 | 0 | 12 | `build`, `build` → `engine` |
+| [The Legend of Zelda: Ocarina of Time](#the-legend-of-zelda-ocarina-of-time) | 0 | 2 | 1 | 0 | 0 | `build`, `build` → `engine` |
 | [The Legend of Zelda: Tears of the Kingdom](#the-legend-of-zelda-tears-of-the-kingdom) | 0 | 0 | 9 | 0 | 0 | `build` → `game` |
 | [Xenoblade Chronicles 3](#xenoblade-chronicles-3) | 6 | 0 | 0 | 0 | 0 | `build` → `game` |
 
@@ -285,7 +285,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 - **`build` → `engine`**, frame rate, blocked: one Frostbite game here, judgement: Frostbite's frame regulator at a fixed pointer. Engine code other Frostbite games ship (the simulation's own rate is already set by name)
 
 - **1.8d.310c `main`** `a48c0de3…`
-  - host [hle_fpslock.c:53](../../dm/host/hle_fpslock.c#L53): engine frame limit set to fps_target: FIFA frame regulator
+  - host [hle_fpslock.c:52](../../dm/host/hle_fpslock.c#L52): engine frame limit set to fps_target: FIFA frame regulator
 
 ### FINAL FANTASY CRYSTAL CHRONICLES Remastered Edition
 
@@ -361,7 +361,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 - **`build` → `engine`**, frame rate, blocked: one game on that engine here, judgement: Next Level Games' frame limiter target at a fixed address. The studio's engine, which its other games ship
 
 - **1.4.0 `main`** `79e5950f…`
-  - host [hle_fpslock.c:38](../../dm/host/hle_fpslock.c#L38): engine frame limit set to fps_target: NLG frame limiter target
+  - host [hle_fpslock.c:37](../../dm/host/hle_fpslock.c#L37): engine frame limit set to fps_target: NLG frame limiter target
 
 ### Mario + Rabbids® Sparks of Hope
 
@@ -379,7 +379,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 - **`build` → `engine`**, frame rate, blocked: one RE Engine game here, judgement: RE Engine's frame limit at a fixed pointer. Engine code other RE Engine games ship
 
 - **16.0.2 `main`** `c9a3dd77…`
-  - host [hle_fpslock.c:34](../../dm/host/hle_fpslock.c#L34): engine frame limit set to fps_target: RE Engine frame limit
+  - host [hle_fpslock.c:33](../../dm/host/hle_fpslock.c#L33): engine frame limit set to fps_target: RE Engine frame limit
 
 ### Need For Speed™ Hot Pursuit Remastered
 
@@ -390,11 +390,11 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 
 - **1.0.3 `main`** `799d1061…` ([patches.py:7](../../dm/games/010029B0118E8000/patches.py#L7))
   - cut `+0x4835a4`: frame limiter spin: b.gt main+0x483588 → nop (the host paces the frames)
-  - host [hle_fpslock.c:43](../../dm/host/hle_fpslock.c#L43): engine frame limit set to fps_target: Criterion 60 fps mode
-  - host [hle_fpslock.c:44](../../dm/host/hle_fpslock.c#L44): engine frame limit set to fps_target: Criterion frame ticks
-  - host [hle_fpslock.c:45](../../dm/host/hle_fpslock.c#L45): engine frame limit set to fps_target: Criterion frame ticks / 10
-  - host [hle_fpslock.c:46](../../dm/host/hle_fpslock.c#L46): engine frame limit set to fps_target: Criterion 2D game step
-  - host [hle_fpslock.c:47](../../dm/host/hle_fpslock.c#L47): engine frame limit set to fps_target: Criterion 3D game step
+  - host [hle_fpslock.c:42](../../dm/host/hle_fpslock.c#L42): engine frame limit set to fps_target: Criterion 60 fps mode
+  - host [hle_fpslock.c:43](../../dm/host/hle_fpslock.c#L43): engine frame limit set to fps_target: Criterion frame ticks
+  - host [hle_fpslock.c:44](../../dm/host/hle_fpslock.c#L44): engine frame limit set to fps_target: Criterion frame ticks / 10
+  - host [hle_fpslock.c:45](../../dm/host/hle_fpslock.c#L45): engine frame limit set to fps_target: Criterion 2D game step
+  - host [hle_fpslock.c:46](../../dm/host/hle_fpslock.c#L46): engine frame limit set to fps_target: Criterion 3D game step
 
 ### NieR:Automata The End of YoRHa Edition (010056B015FE8000)
 
@@ -413,7 +413,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
   - cut `+0x9bf4d4`: dynamic resolution: optimal frame cost 32.01 -> 16.005 ms at 60 fps (second load)
   - cut `+0x9bf4f8`: dynamic resolution: good frame cost 30 -> 15 ms at 60 fps
   - launcher capabilities: DYNAMIC_RESOLUTION
-  - host [hle_fpslock.c:90](../../dm/host/hle_fpslock.c#L90): frame interval and dynamic-resolution floor
+  - host [hle_fpslock.c:68](../../dm/host/hle_fpslock.c#L68): frame interval and dynamic-resolution floor
 
 ### NieR:Automata The End of YoRHa Edition (0100B8E016F76000)
 
@@ -432,7 +432,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
   - cut `+0x9c08e8`: dynamic resolution lower bound follows the selected preset
   - cut `+0x9c08f4`: dynamic resolution lower bound follows the selected preset
   - launcher capabilities: DYNAMIC_RESOLUTION
-  - host [hle_fpslock.c:91](../../dm/host/hle_fpslock.c#L91): frame interval and dynamic-resolution floor
+  - host [hle_fpslock.c:69](../../dm/host/hle_fpslock.c#L69): frame interval and dynamic-resolution floor
 
 ### Paper Mario: The Thousand-Year Door
 
@@ -451,7 +451,7 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 - **`build` → `engine`**, frame rate, gap, judgement: Unity's Application.targetFrameRate at a fixed address. An IL2CPP player registers the setter by its icall name, so the field can be found in any Unity game; whether to raise it stays the profile's
 
 - **1.3.0 `main`** `94ceae32…`
-  - host [hle_fpslock.c:29](../../dm/host/hle_fpslock.c#L29): engine frame limit set to fps_target: Unity targetFrameRate
+  - host [hle_fpslock.c:28](../../dm/host/hle_fpslock.c#L28): engine frame limit set to fps_target: Unity targetFrameRate
 
 ### Pokémon Legends: Arceus
 
@@ -608,23 +608,12 @@ Every patch bound tighter than it could be: the open gaps, then the blocked, kep
 [The Legend of Zelda: Ocarina of Time](../../dm/games/0400486024DEC000/README.md), `0400486024DEC000`, [patches.py](../../dm/games/0400486024DEC000/patches.py).
 
 - **`build`**, frame rate, at goal, judgement: frame clock probes at main+0x508c34 and main+0x508c4c (diagnostic, v131072 main). Read-only gates at fixed offsets of this build, for one measurement; they go once the frame step is understood
-- **`build` → `engine`**, frame rate, blocked: one game of this engine version here, judgement: Ocarina of Time's time object (frame step, seconds and rate) at a fixed pointer. Nintendo EPD's engine (Tears of the Kingdom's file layout) may keep the same time object in other games
+- **`build` → `engine`**, frame rate, blocked: one game of this engine version here, judgement: frame step: the time object's step times the host's vsyncs (v131072 main+0x6e6cc4). Nintendo EPD's engine (Tears of the Kingdom's file layout) may share the time object and its setter with other games
 
-- **v131072 `main`** `e0f3ccfa…` ([patches.py:11](../../dm/games/0400486024DEC000/patches.py#L11))
+- **v131072 `main`** `e0f3ccfa…` ([patches.py:12](../../dm/games/0400486024DEC000/patches.py#L12))
   - gate 8475 at `+0x508c34`: probe slot 0: ldr s0,[x1,#4], the step the update copies into its system object (+0xa68)
   - gate 33605659 at `+0x508c4c`: probe slot 1: ldr s0,[x8,#0x18], the time the update multiplies by 60.0
-  - host [hle_fpslock.c:60](../../dm/host/hle_fpslock.c#L60): engine frame limit set to fps_target: Ocarina of Time frame step
-  - host [hle_fpslock.c:61](../../dm/host/hle_fpslock.c#L61): engine frame limit set to fps_target: Ocarina of Time frame step inverse
-  - host [hle_fpslock.c:62](../../dm/host/hle_fpslock.c#L62): engine frame limit set to fps_target: Ocarina of Time frame seconds
-  - host [hle_fpslock.c:63](../../dm/host/hle_fpslock.c#L63): engine frame limit set to fps_target: Ocarina of Time frame rate
-  - host [hle_fpslock.c:64](../../dm/host/hle_fpslock.c#L64): engine frame limit set to fps_target: Ocarina of Time second frame step
-  - host [hle_fpslock.c:65](../../dm/host/hle_fpslock.c#L65): engine frame limit set to fps_target: Ocarina of Time second frame seconds
-  - host [hle_fpslock.c:66](../../dm/host/hle_fpslock.c#L66): engine frame limit set to fps_target: Ocarina of Time second frame step inverse
-  - host [hle_fpslock.c:67](../../dm/host/hle_fpslock.c#L67): engine frame limit set to fps_target: Ocarina of Time frame rate (integer)
-  - host [hle_fpslock.c:69](../../dm/host/hle_fpslock.c#L69): engine frame limit set to fps_target: Ocarina of Time channel +
-  - host [hle_fpslock.c:70](../../dm/host/hle_fpslock.c#L70): engine frame limit set to fps_target: Ocarina of Time channel +
-  - host [hle_fpslock.c:71](../../dm/host/hle_fpslock.c#L71): engine frame limit set to fps_target: Ocarina of Time channel +
-  - host [hle_fpslock.c:72](../../dm/host/hle_fpslock.c#L72): engine frame limit set to fps_target: Ocarina of Time channel +
+  - frame step `+0x6e6cc4`: frame step from the host in whole vsyncs: the time object's step times the vsyncs the frame is on screen for (state +0x20; 0 = the game's step)
 
 ### The Legend of Zelda: Tears of the Kingdom
 

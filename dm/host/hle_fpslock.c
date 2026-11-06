@@ -18,8 +18,7 @@
 // frame for two, so a shorter time showed some frames for one (30.4 fps); 30 writes the game's own 33.333 ms
 // Also: a frame time in ticks as a uint32 (scale / frame rate: 19,200,000 for the Switch's 19.2 MHz system tick), a frame step in seconds as a float (1 / frame rate), and a mode
 // switch an engine reads before it takes those fields at all (written 1 at any target)
-// and a frame step in sixtieths of a second as a float (60 / frame rate: 1.0 at 60, 2.0 at 30) for an engine that advances by a fixed amount per frame
-enum { FPS_F32, VSYNCS_I32, MS_F32, FPS_I32, TICKS_U32, SECS_F32, MODE_U32, FPS_F64, STEP_F32, INV_STEP_F32 };   // INV_STEP_F32: its inverse, frame rate / 60 (0.5 at 30)
+enum { FPS_F32, VSYNCS_I32, MS_F32, FPS_I32, TICKS_U32, SECS_F32, MODE_U32, FPS_F64 };
 #define MS_MARGIN 0.5f
 static float ms_want(int fps) { return 1000.0f / (float)fps - (fps == 60 ? MS_MARGIN : 0); }
 typedef struct { const char *build, *what; uint64_t ptr_off; uint32_t field; uint8_t kind, copies; uint32_t scale; } lock_t;
@@ -51,27 +50,6 @@ static const lock_t k_locks[] = {
     // this row the game keeps 30 fps at the right speed (the simulation at 60 and the regulator at 30: match clock as at 30). The game asks for present interval 2
     // (BaseDisplaySettings.PresentInterval), which the profile's present_interval display ignores
     { "a48c0de3bc353efa0e4d359bde05ef24", "FIFA frame regulator", 0xda20e38, 0x8, FPS_F64, 2, 0 },
-    // The Legend of Zelda: Ocarina of Time v131072 (Switch 2): the game's time object, a singleton of 0x1f0 bytes at [main+0x4e94b20] (made at main+0xf91cc0, its constructor
-    // main+0xf91d40). The constructor sets a step of 1.0 sixtieths (+0x0, +0x10), 1/60 s (+0x8, +0x18), 60.0 (+0xc) and 60 (+0x1c), and nothing writes them per frame: over 100 readers
-    // step the world by them (main+0x74b4f0 hands +0x0 to the updates as their step; [ctx+0x3b40] * 1/60 follows from it), so below 60 fps the game runs slow (probes, hle_obs_probe.c:
-    // 1.0 and 1/60 at 30-39 fps and at a held 30). +0x1c4 set is a pause, which these rows leave alone (a step of 0 is outside the ranges written).
-    // Six more channels of {step, 1 / step, seconds, rate} follow at +0x20, +0x50, +0x80, +0xb0, +0xe0 and +0x110, each with a list of three after it. Read at a held 30 with only the first
-    // two written (DM_CTL peek): the game had set +0x50 and +0xe0 to 2, 0.5, 1/30, 30 itself, the other four stayed at 60, and Link moved at half speed while the world did not
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time frame step", 0x4e94b20, 0x0, STEP_F32, 1, 0 },
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time frame step inverse", 0x4e94b20, 0x4, INV_STEP_F32, 1, 0 },
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time frame seconds", 0x4e94b20, 0x8, SECS_F32, 1, 0 },
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time frame rate", 0x4e94b20, 0xc, FPS_F32, 1, 0 },
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time second frame step", 0x4e94b20, 0x10, STEP_F32, 1, 0 },
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time second frame seconds", 0x4e94b20, 0x18, SECS_F32, 1, 0 },
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time second frame step inverse", 0x4e94b20, 0x14, INV_STEP_F32, 1, 0 },
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time frame rate (integer)", 0x4e94b20, 0x1c, FPS_I32, 1, 0 },
-#define OOT_CHANNEL(c) \
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time channel +" #c " step", 0x4e94b20, c, STEP_F32, 1, 0 }, \
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time channel +" #c " step inverse", 0x4e94b20, c + 4, INV_STEP_F32, 1, 0 }, \
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time channel +" #c " seconds", 0x4e94b20, c + 8, SECS_F32, 1, 0 }, \
-    { "e0f3ccfaf50065ae4ea01eb5aeb13b1a", "Ocarina of Time channel +" #c " rate", 0x4e94b20, c + 0xc, FPS_F32, 1, 0 },
-    OOT_CHANNEL(0x20) OOT_CHANNEL(0x50) OOT_CHANNEL(0x80) OOT_CHANNEL(0xb0) OOT_CHANNEL(0xe0) OOT_CHANNEL(0x110)
-#undef OOT_CHANNEL
 };
 #define NLOCKS ((int)(sizeof k_locks / sizeof k_locks[0]))
 
@@ -307,10 +285,6 @@ void dm_fps_lock_tick(void) {
                 int ms = L->kind == MS_F32; float f, w = ms ? ms_want(target) : (float)target; memcpy(&f, &cur, sizeof f); memcpy(&want, &w, sizeof want);
                 if (cur == want || !(ms ? f >= 8 && f <= 100 : f >= 10 && f <= 120)) continue;   // already set, or not set yet (RE Engine: 6000 at boot; Unreal: 0 = no limit until the config sets it)
                 snprintf(was, sizeof was, ms ? "%.3f ms" : "%g", f);
-            } else if (L->kind == STEP_F32 || L->kind == INV_STEP_F32) {
-                float f, w = L->kind == STEP_F32 ? 60.0f / (float)target : (float)target / 60.0f; memcpy(&f, &cur, sizeof f); memcpy(&want, &w, sizeof want);
-                if (cur == want || !(f >= 0.25f && f <= 4.0f)) continue;   // a pause (0) or not set yet
-                snprintf(was, sizeof was, "%g", f);
             } else if (L->kind == SECS_F32) {
                 float f, w = 1.0f / (float)target; memcpy(&f, &cur, sizeof f); memcpy(&want, &w, sizeof want);
                 if (cur == want || !(f >= 1.0f / 120 && f <= 0.1f)) continue;   // not set yet (0 before the game's first frame)
@@ -334,7 +308,6 @@ void dm_fps_lock_tick(void) {
             if (nlog[r] < 8) { nlog[r]++; char now[24];
                 if (L->kind == MS_F32) snprintf(now, sizeof now, "%.3f ms (%d fps)", ms_want(target), target);
                 else if (L->kind == SECS_F32) snprintf(now, sizeof now, "%.5f s (%d fps)", 1.0 / target, target);
-                else if (L->kind == STEP_F32 || L->kind == INV_STEP_F32) snprintf(now, sizeof now, "%g (%d fps)", L->kind == STEP_F32 ? 60.0 / target : target / 60.0, target);
                 else if (L->kind == TICKS_U32) snprintf(now, sizeof now, "%u (%d fps)", want, target);
                 else if (L->kind == MODE_U32) snprintf(now, sizeof now, "1 (%d fps)", target);
                 else snprintf(now, sizeof now, "%u%s", L->kind == FPS_F32 ? (unsigned)target : want, L->kind == FPS_F32 || L->kind == FPS_I32 ? " fps" : " vsyncs");
