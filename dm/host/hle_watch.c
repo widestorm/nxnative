@@ -1,4 +1,4 @@
-// DM_WATCH=<main offset of a pointer>:<offset>:<length> (hex): a diagnostic write watch on guest data reached through a global pointer of main, to find the code that writes a field
+// DM_WRITE_WATCH=<main offset of a pointer>:<offset>:<length> (hex): a diagnostic write watch on guest data reached through a global pointer of main, to find the code that writes a field
 // (Ocarina of Time: the time object the frame rate rows write is set back every frame). A host thread write-protects the page of [ptr]+offset every 1 ms; the fault hook records the
 // writing instruction and the address, unprotects the page and lets the write run. Writes to the rest of the page are caught too and logged with their offset from the object. Every 2 s
 // the thread logs the distinct writers (pc as a module offset, the field offset, hits). The host's own writes unprotect first (dm_guest_write_prepare). Off unless set
@@ -42,7 +42,7 @@ static void *watch_main(void *arg) {
         if (!obj) { usleep(100000); continue; }
         uintptr_t target = (uintptr_t)(obj + g_woff), page = target & ~(uintptr_t)(pagesz() - 1);
         if (!atomic_load(&g_wpage)) { atomic_store(&g_wobj, (uintptr_t)obj); atomic_store(&g_wpage, page);
-            LOG("[watch] DM_WATCH: [main+%#llx] = %#llx, watching +%#llx..+%#llx (page %#llx)", (unsigned long long)g_wptr, (unsigned long long)obj, (unsigned long long)g_woff, (unsigned long long)(g_woff + g_wlen), (unsigned long long)page); }
+            LOG("[watch] DM_WRITE_WATCH: [main+%#llx] = %#llx, watching +%#llx..+%#llx (page %#llx)", (unsigned long long)g_wptr, (unsigned long long)obj, (unsigned long long)g_woff, (unsigned long long)(g_woff + g_wlen), (unsigned long long)page); }
         // After a fault the page stays writable for 5 ms: a page that also holds locks (an exclusive load / store loop) would otherwise fault again before its store completes, and the
         // game hung at boot with the page protected again every 200 us
         uint64_t f = atomic_load(&g_wfaults);
@@ -65,7 +65,7 @@ static void *watch_main(void *arg) {
     return NULL;
 }
 __attribute__((constructor)) static void watch_attach(void) {
-    const char *e = getenv("DM_WATCH"); if (!e) return;
+    const char *e = getenv("DM_WRITE_WATCH"); if (!e) return;
     char *p;
     g_wptr = strtoull(e, &p, 16); if (*p != ':') return;
     g_woff = strtoull(p + 1, &p, 16); if (*p != ':') return;

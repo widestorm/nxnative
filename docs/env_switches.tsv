@@ -359,12 +359,13 @@ DM_UPSCALER	player	`metalfx` draws the game's own upscaler shaders (agl's NDSR n
 DM_VK_CAPTURE	path	`=<dir>` (Mac) writes every SPIR-V module the game creates to `<dir>/<key>.spv`; the NSP script's Vulkan shader capture stage sets it
 DM_VK_LOG	diagnostic	`=1` logs Vulkan object creation in the Vulkan-on-Metal layer
 DM_VSYNC_HZ	switch	`=<Hz>`: rate at which a host thread fires the vi vsync event when the display link does not drive it (default 60)
-DM_WATCH	diagnostic	`=<main offset of a pointer>:<offset>:<length>` (hex): logs every 2 s the instructions that write guest data reached through that global pointer of main (the page is write-protected every 1 ms, writable for 5 ms after each write, `hle_watch.c`)
+DM_WATCH	diagnostic	`=<s>` dumps all threads after that many seconds (SIGALRM) and turns on the stall watchdog; off unless set
 DM_WATCH_SAMPLE	diagnostic	`=<path>` (Mac): when the stall watchdog fires, samples the process for 1 s with `/usr/bin/sample` and writes the thread stacks to that path
 DM_WATCH_STALL	diagnostic	`=<s>`: when the frame loop makes no progress for that long (default 15 with `DM_WATCH`), logs a red line, dumps the threads and exits
 DM_WEB_LOG	diagnostic	`1` logs each key an offline HTML page is given and where the focus is after it
 DM_WINDOW	switch	When set (to any value, `0` included) opens a Mac window with keyboard and controller input; unset runs headless with the guest on the current thread; the Mac launcher sets it
 DM_WINDOW_TOP	diagnostic	`1` (Mac, with `DM_WINDOW`) orders the game window in front without activating it and keeps it above other apps' windows, so a covered window does not slow the run; `regress.py` sets it
+DM_WRITE_WATCH	diagnostic	`=<main offset of a pointer>:<offset>:<length>` (hex): logs every 2 s the instructions that write guest data reached through that global pointer of main (the page is write-protected every 1 ms, writable for 5 ms after each write, `hle_watch.c`)
 DM_XCODE_DERIVED_DATA	path	Xcode derived data folder for `build_ipa.sh` (default `$W/build/ios/xcode-dd`); the NSP script points it into the game's build folder
 DM_XCODE_PROJECT_DIR	path	Folder of the per-game Xcode project that `build_ipa.sh --prepare-xcode` makes (default `$W/xcode`); the NSP script sets it
 DM_XV_FILE	path	File where the attachment validity ledger keeps the keys it disabled after a violation, read at the next launch
