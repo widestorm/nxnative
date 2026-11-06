@@ -36,6 +36,11 @@ sys_resource	0x3000000
 shader_groups	/Shader/=shader /Effect/=effect /Lib/=lib /UI/=layout
 shader_note	Ocarina of Time shaders
 
+# ---- Frame rate ----
+# The game steps its world by a fixed 1/60 s per frame (its time object, hle_fpslock.c), so below 60 fps it runs slow. fps_target makes the launcher offer Frame rate: at 30 the host
+# holds each frame two vsyncs and writes a step of 2.0 sixtieths (1/30 s) into the time object, so the game runs at its real speed; 60 leaves the constructor's values
+fps_target	60
+
 # ---- Graphics ----
 # agl wraps its clears in render conditions on Donkey Kong Bananza and Splatoon Raiders; the same library here
 render_cond	on
